@@ -29,7 +29,9 @@ def _diagnose() -> None:
     import os
     import urllib.error
     import urllib.request
-    s2, swid = os.environ.get("ESPN_S2", "").strip(), os.environ.get("ESPN_SWID", "").strip()
+    from espn_client import clean_s2, clean_swid
+    s2 = clean_s2(os.environ.get("ESPN_S2", ""))
+    swid = clean_swid(os.environ.get("ESPN_SWID", ""))
     print("diagnose: ESPN_S2 length %d, has %%-escapes: %s, has whitespace: %s" % (
         len(s2), "%" in s2, any(c.isspace() for c in s2)))
     print("diagnose: ESPN_SWID length %d, braces: %s" % (
@@ -57,7 +59,9 @@ def _diagnose() -> None:
 def _cookie_shape() -> None:
     """Print the cookies' shape (never their values) to help spot paste mistakes."""
     import os
-    s2, swid = os.environ.get("ESPN_S2", ""), os.environ.get("ESPN_SWID", "")
+    from espn_client import clean_s2, clean_swid
+    s2 = clean_s2(os.environ.get("ESPN_S2", ""))
+    swid = clean_swid(os.environ.get("ESPN_SWID", ""))
     if s2 or swid:
         print("cookies: ESPN_S2 %d chars (spaces/newlines: %s, starts with 'espn_s2': %s); "
               "ESPN_SWID %d chars (braces: %s, spaces/newlines: %s, dashes: %d)" % (

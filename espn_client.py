@@ -9,6 +9,7 @@ fetched once. Large player payloads are slimmed before caching.
 from __future__ import annotations
 
 import json
+import re
 import os
 import time
 import urllib.error
@@ -73,10 +74,31 @@ def _slim_player(p: Dict[str, Any], season: int) -> Dict[str, Any]:
     }
 
 
+_GUID = re.compile(r"\{?([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-"
+                   r"[0-9A-Fa-f]{12})\}?")
+
+
+def clean_swid(raw: Optional[str]) -> str:
+    """The {GUID} out of whatever was pasted (a whole DevTools cookie row works too)."""
+    m = _GUID.search(raw or "")
+    return "{%s}" % m.group(1) if m else (raw or "").strip()
+
+
+def clean_s2(raw: Optional[str]) -> str:
+    """The espn_s2 value out of whatever was pasted: the longest token that isn't
+    the cookie's name, domain, path or date."""
+    raw = (raw or "").strip()
+    if raw.lower().startswith("espn_s2="):
+        raw = raw[8:]
+    tokens = [t.strip('"; ') for t in re.split(r"\s+", raw) if t.strip('"; ')]
+    tokens = [t for t in tokens if t.lower() != "espn_s2"]
+    return max(tokens, key=len) if tokens else ""
+
+
 class EspnClient:
     def __init__(self, league_id: str, season: int, espn_s2: str, swid: str,
                  my_team_id: Optional[int] = None, cache_dir: Optional[Path] = None):
-        espn_s2, swid = (espn_s2 or "").strip().strip('"'), (swid or "").strip().strip('"')
+        espn_s2, swid = clean_s2(espn_s2), clean_swid(swid)
         if not league_id:
             raise EspnError("LEAGUE_ID must be set (in .env or the environment)")
         # Cookies are only needed for private leagues; public leagues read without them.
