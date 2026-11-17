@@ -120,8 +120,15 @@ class EspnClient:
             headers["Cookie"] = self._cookie
         if fantasy_filter is not None:
             headers["x-fantasy-filter"] = json.dumps(fantasy_filter)
-        req = urllib.request.Request(self._url(params, league, suffix, season), method="GET",
-                                     headers=headers)
+        return self._fetch_url(self._url(params, league, suffix, season), headers)
+
+    def _fetch_url(self, url: str, headers: Optional[Dict[str, str]] = None) -> Any:
+        if headers is None:
+            headers = {"Accept": "application/json",
+                       "User-Agent": "Mozilla/5.0 (fantasy-dashboard; local)"}
+            if self._cookie:
+                headers["Cookie"] = self._cookie
+        req = urllib.request.Request(url, method="GET", headers=headers)
         last: Optional[Exception] = None
         for attempt in range(4):
             if attempt:
@@ -265,8 +272,16 @@ class EspnClient:
             cached = self._read(name)
             if cached is not None:
                 return cached
-        d = self._fetch([("view", v) for v in ("mSettings", "mTeam", "mStatus",
-                                               "mMatchupScore", "mDraftDetail")], season=year)
+        views = [("view", v) for v in ("mSettings", "mTeam", "mStatus",
+                                        "mMatchupScore", "mDraftDetail")]
+        try:
+            d = self._fetch(views, season=year)
+        except EspnAuthError:
+            # Some past seasons are only served by the leagueHistory endpoint.
+            url = "%s/leagueHistory/%s?%s" % (BASE, self.league_id, urllib.parse.urlencode(
+                views + [("seasonId", year)]))
+            d = self._fetch_url(url)
+            d = d[0] if isinstance(d, list) and d else d
         sched = (d.get("settings") or {}).get("scheduleSettings") or {}
         out = {
             "season": year,

@@ -315,10 +315,13 @@ def ingest(client: Any, db_path: Path = DB_PATH, refresh: bool = False,
                 conn.execute("INSERT INTO pro_games VALUES (?,?,?)", (t["id"], int(wk), d))
 
     # Earlier seasons are finished, so they are fetched once and cached for good.
+    print("Earlier seasons ESPN lists: %s" % (status.get("previousSeasons") or "none"),
+          file=sys.stderr)
     for year in status.get("previousSeasons") or []:
         try:
             h = client.history(int(year))
-        except EspnError:
+        except EspnError as e:
+            print("Skipping %s history (%s)" % (year, str(e)[:120]), file=sys.stderr)
             continue  # history is a nice-to-have; never block the current season
         for m in h["members"]:
             conn.execute("INSERT OR IGNORE INTO managers VALUES (?,?,?)",
