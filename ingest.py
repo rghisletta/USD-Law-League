@@ -293,7 +293,14 @@ def ingest(client: Any, db_path: Path = DB_PATH, refresh: bool = False,
             p.get("teamId"), p.get("playerId"), int(bool(p.get("keeper"))),
             p.get("bidAmount"), p.get("autoDraftTypeId")))
 
-    for tr in client.trades(refresh=refresh or slow):
+    try:
+        trades = client.trades(refresh=refresh or slow)
+    except EspnError as e:
+        # The activity feed is members-only even in public leagues; without a
+        # member's cookies the trade ledger is simply left empty.
+        print("Skipping trades (%s)" % str(e)[:120], file=sys.stderr)
+        trades = []
+    for tr in trades:
         conn.execute("INSERT OR REPLACE INTO trades VALUES (?,?)", (tr["id"], tr["date"]))
         for it in tr["items"]:
             wanted.add(it["playerId"])
