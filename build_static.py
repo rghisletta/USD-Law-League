@@ -24,6 +24,36 @@ SITE = ROOT / "site"
 FULL_EVERY = 4 * 3600  # seconds
 
 
+def _diagnose() -> None:
+    """On failure, print what can be checked without revealing the cookies."""
+    import os
+    import urllib.error
+    import urllib.request
+    s2, swid = os.environ.get("ESPN_S2", "").strip(), os.environ.get("ESPN_SWID", "").strip()
+    print("diagnose: ESPN_S2 length %d, has %%-escapes: %s, has whitespace: %s" % (
+        len(s2), "%" in s2, any(c.isspace() for c in s2)))
+    print("diagnose: ESPN_SWID length %d, braces: %s" % (
+        len(swid), swid.startswith("{") and swid.endswith("}")))
+    league = os.environ.get("LEAGUE_ID", "")
+    for season in ("2026", "2025"):
+        for label, cookie in (("with cookies", True), ("no cookies", False)):
+            url = ("https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/%s"
+                   "/segments/0/leagues/%s?view=mStatus" % (season, league))
+            headers = {"Accept": "application/json", "User-Agent": "Mozilla/5.0"}
+            if cookie and s2 and swid:
+                sw = swid if swid.startswith("{") else "{" + swid.strip("{}") + "}"
+                headers["Cookie"] = "espn_s2=%s; SWID=%s" % (s2, sw)
+            try:
+                with urllib.request.urlopen(urllib.request.Request(url, headers=headers),
+                                            timeout=30) as r:
+                    print("diagnose: season %s %s -> HTTP %d" % (season, label, r.status))
+            except urllib.error.HTTPError as e:
+                print("diagnose: season %s %s -> HTTP %d %s" % (
+                    season, label, e.code, e.read().decode("utf-8", "replace")[:200]))
+            except Exception as e:  # noqa: BLE001
+                print("diagnose: season %s %s -> %s" % (season, label, e))
+
+
 def main() -> int:
     try:
         client = EspnClient.from_env()
@@ -32,6 +62,7 @@ def main() -> int:
         ingest.ingest(client, light=fresh)
     except EspnError as e:
         print("Build failed: %s" % e, file=sys.stderr)
+        _diagnose()
         return 1
     conn = sqlite3.connect(str(ingest.DB_PATH))
     data = analytics.dashboard(conn, int(time.time() * 1000))

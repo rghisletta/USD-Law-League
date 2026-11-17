@@ -76,6 +76,7 @@ def _slim_player(p: Dict[str, Any], season: int) -> Dict[str, Any]:
 class EspnClient:
     def __init__(self, league_id: str, season: int, espn_s2: str, swid: str,
                  my_team_id: Optional[int] = None, cache_dir: Optional[Path] = None):
+        espn_s2, swid = (espn_s2 or "").strip().strip('"'), (swid or "").strip().strip('"')
         if not league_id:
             raise EspnError("LEAGUE_ID must be set (in .env or the environment)")
         # Cookies are only needed for private leagues; public leagues read without them.
@@ -132,8 +133,8 @@ class EspnClient:
                 detail = e.read().decode("utf-8", "replace")[:300]
                 if e.code in (401, 403) or "AUTH_LEAGUE_NOT_VISIBLE" in detail:
                     raise EspnAuthError(
-                        "ESPN refused access to the league (HTTP %d). If the league is "
-                        "private, set ESPN_S2 / ESPN_SWID (or refresh them)." % e.code)
+                        "ESPN refused access to the league (HTTP %d): %s. If the league is "
+                        "private, set ESPN_S2 / ESPN_SWID (or refresh them)." % (e.code, detail))
                 if e.code == 429 or e.code >= 500:
                     last = e
                     continue
