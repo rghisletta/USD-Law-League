@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fantasy dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #ffffff; --ink: #111111; --ink2: #5c5c5c; --ink3: #999999; --rule: #e6e6e6;
+  --accent: #2563eb; --other: #bdbdbd; --good: #111111; --bad: #c62828;
+  --pos: 37,99,235; --neg: 214,48,49; --tint: 17,17,17;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #121212; --ink: #ededed; --ink2: #a8a8a8; --ink3: #707070; --rule: #2c2c2c;
+    --accent: #6ea0ff; --other: #5a5a5a; --good: #ededed; --bad: #ff7b72;
+    --pos: 96,150,255; --neg: 240,100,95; --tint: 237,237,237;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased; }
+.page { max-width: 1120px; margin: 0 auto; padding: 0 28px 80px; }
+.top { position: sticky; top: 0; z-index: 4; background: var(--bg); }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 24px; padding: 18px 0 12px; }
+h1 { font: 600 28px/1.1 var(--serif); margin: 0; letter-spacing: -.01em; }
+.sub { color: var(--ink2); font-size: 13px; margin-top: 5px; }
+.spacer { flex: 1; }
+select, button { font: inherit; color: var(--ink); }
+select { background: transparent; border: 0; border-bottom: 1px solid var(--ink3);
+  border-radius: 0; padding: 3px 2px; max-width: 240px; }
+.link { background: none; border: 0; padding: 0; color: var(--ink2); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink3); }
+.link:hover { color: var(--ink); } .link:disabled { opacity: .5; cursor: default; }
+.ctl { color: var(--ink2); font-size: 13px; }
+nav { display: flex; gap: 22px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule);
+  overflow-x: auto; }
+nav button { background: none; border: 0; padding: 11px 0 9px; color: var(--ink2); cursor: pointer;
+  border-bottom: 2px solid transparent; white-space: nowrap; }
+nav button:hover { color: var(--ink); }
+nav button.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+section { display: none; padding-top: 26px; } section.on { display: block; }
+h2 { font: 600 19px/1.25 var(--serif); margin: 44px 0 4px; } section > h2:first-child { margin-top: 0; }
+.note { color: var(--ink2); font-size: 13px; margin: 0 0 12px; max-width: 72ch; }
+details.how { color: var(--ink2); font-size: 13px; margin: -6px 0 12px; max-width: 72ch; }
+details.how summary { cursor: pointer; color: var(--ink3); }
+dl.gl { margin: 0 0 8px; max-width: 78ch; } dl.gl dt { font-weight: 600; margin-top: 14px; }
+dl.gl dd { margin: 2px 0 0; color: var(--ink2); }
+details.how ul { margin: 8px 0; padding-left: 18px; } details.how li { margin: 3px 0; } details.how b { color: var(--ink); font-weight: 600; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+thead th { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink2); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule);
+  padding: 7px 10px 6px; text-align: left; white-space: nowrap; vertical-align: bottom; }
+td { padding: 6px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td.n, th.n { text-align: right; } td.c, th.c { text-align: center; }
+th:first-child, td:first-child { padding-left: 0; } th:last-child, td:last-child { padding-right: 0; }
+td.wrap { white-space: normal; }
+.matrix td:last-child, .matrix th:last-child { padding-right: 10px; }
+tr.me td { font-weight: 600; } tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+tr.cut td { border-bottom: 1px solid var(--ink); }
+.m { color: var(--ink3); font-weight: 400; } .good { color: var(--good); } .bad { color: var(--bad); }
+.tag { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.err { border-left: 3px solid var(--bad); padding: 6px 12px; margin: 18px 0 0; color: var(--bad); }
+/* live */
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 470px), 1fr)); gap: 30px 44px; }
+.cmp td:nth-child(1), .cmp td:nth-child(5) { width: 38%; } .cmp td:nth-child(3) { font-size: 11px; }
+.game { border-top: 1px solid var(--ink); padding-top: 10px; }
+.game.mine { border-top-width: 3px; border-top-color: var(--accent); }
+.side { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 12px; padding: 2px 0; }
+.side .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side .pts { font: 600 24px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+.side .st { grid-column: 1 / -1; color: var(--ink2); font-size: 12px; margin-bottom: 4px; }
+.game details { margin-top: 6px; } .game summary { cursor: pointer; color: var(--ink3); font-size: 12px; }
+.game table { font-size: 12.5px; margin: 8px 0 4px; } .game td { padding: 3px 8px; }
+.game thead th { border-top: 0; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px;
+  border: 1px solid var(--ink3); vertical-align: 1px; }
+.dot.playing { background: var(--good); border-color: var(--good); }
+.dot.upcoming { background: transparent; } .dot.done, .dot.bye { background: var(--ink3); }
+/* small pieces */
+.bar { position: relative; height: 12px; width: 64px; }
+.bar i { position: absolute; top: 2px; height: 8px; }
+.bar::before { content: ""; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1px; background: var(--ink3); }
+.row { display: flex; gap: 8px 22px; align-items: baseline; flex-wrap: wrap; margin: 6px 0 10px; }
+.seg { display: flex; gap: 6px 16px; flex-wrap: wrap; } .seg button { background: none; border: 0; padding: 0 0 2px; cursor: pointer;
+  color: var(--ink2); border-bottom: 1.5px solid transparent; } .seg button.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.key { display: flex; gap: 18px; font-size: 12px; color: var(--ink2); flex-wrap: wrap; }
+.key .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--c); }
+.bx { display: inline-block; width: 14px; height: 11px; margin: 0 5px 0 2px; vertical-align: -1px; outline: 1.5px solid var(--ink); outline-offset: -1.5px; }
+td.hit { outline: 1.5px solid var(--ink); outline-offset: -2px; font-weight: 700; }
+svg text { fill: var(--ink2); font: 11px var(--sans); } svg .lbl { fill: var(--ink); font-weight: 600; }
+#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg);
+  padding: 7px 10px; font-size: 12px; line-height: 1.4; display: none; z-index: 5; max-width: 270px; }
+.trade { border-top: 1px solid var(--rule); padding: 12px 0; display: grid; grid-template-columns: 150px 1fr 1fr; gap: 6px 24px; }
+.trade:last-of-type { border-bottom: 1px solid var(--rule); }
+.trade .tot { font: 600 20px/1.2 var(--serif); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 0 44px; }
+@media (max-width: 640px) {
+  .page { padding: 0 14px 60px; }
+  /* On a phone only the tab bar stays pinned; the title scrolls away. */
+  .top { display: contents; }
+  header { padding: 14px 0 10px; gap: 6px 16px; }
+  h1 { font-size: 22px; } .sub { font-size: 12px; margin-top: 3px; }
+  header .spacer { display: none; } header select { max-width: 190px; }
+  nav { position: sticky; top: 0; z-index: 4; background: var(--bg); gap: 18px;
+    margin: 0 -14px; padding: 0 14px; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav button { padding: 12px 0 10px; font-size: 14px; }
+  section { padding-top: 20px; } h2 { font-size: 18px; margin-top: 34px; }
+  th, td { padding-left: 7px; padding-right: 7px; } td { font-size: 13px; }
+  .scroll { margin: 0 -14px; padding: 0 14px; }
+  .games { gap: 26px; } .side .pts { font-size: 22px; }
+  .cmp { table-layout: fixed; } .cmp td { white-space: normal; padding: 4px 4px; font-size: 12px; line-height: 1.25; }
+  .cmp td:nth-child(1), .cmp td:nth-child(5) { width: auto; }
+  .cmp col.cp { width: 56px; } .cmp col.cs { width: 36px; }
+  .cmp td:nth-child(2), .cmp td:nth-child(4) { white-space: nowrap; } .cmp td:nth-child(3) { font-size: 10px; }
+  #chart { overflow-x: auto; margin: 0 -14px; padding: 0 14px; } #chart svg { min-width: 760px; }
+  .cmp thead th { white-space: normal; }
+  .trade { grid-template-columns: minmax(0, 1fr); } .two { grid-template-columns: minmax(0, 1fr); }
+  .bar { width: 70px; }
+  #tip { max-width: 220px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="top">
+<header>
+  <div><h1 id="title">Fantasy dashboard</h1><div class="sub" id="sub">Loading…</div></div>
+  <div class="spacer"></div>
+  <label class="ctl">Viewing <select id="team"></select></label>
+  <button class="link ctl" id="names" style="display:none">Show real names</button>
+  <button class="link ctl" id="refresh">Refresh</button>
+</header>
+<nav id="nav"></nav>
+</div>
+<div id="err"></div>
+<section id="live"></section>
+<section id="standings"></section>
+<section id="bench"></section>
+<section id="draft"></section>
+<section id="moves"></section>
+<section id="swap"></section>
+<section id="history"></section>
+<section id="injuries"></section>
+<section id="glossary"></section>
+</div>
+<div id="tip"></div>
+<script>
+const TABS = [["live","Live"],["standings","Standings"],["bench","Lineups"],["draft","Draft"],["moves","Trades & waivers"],["swap","Schedule swap"],["history","History"],["injuries","Injuries"],["glossary","Glossary"]];
+let STATIC = false;
+let D = null, tab = localStorage.tab || "live", team = null, pos = "All", gridMode = "lost", swapSeason = "all";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f2 = x => x == null ? "–" : (Math.round(x * 100) / 100).toFixed(2);
+const pc = x => x == null ? "–" : Math.round(x * 100) + "%";
+const f1 = x => x == null ? "–" : (Math.round(x * 10) / 10).toFixed(1);
+const sg = x => x == null ? "–" : (x > 0.049 ? "+" : x < -0.049 ? "−" : "") + f1(Math.abs(x));
+// Labels can be team names or the managers' real names (from names.json).
+let people = false;
+try { people = localStorage.people === "1"; } catch (e) {}
+const TEAM = id => D.teams[id] ? D.teams[id].name : (id ? "Team " + id : "Free agent");
+const T = id => people && D.teams[id] && D.teams[id].manager ? D.teams[id].manager : TEAM(id);
+const other = id => D.teams[id] && D.teams[id].manager ? (people ? TEAM(id) : D.teams[id].manager) : "";
+const short2 = id => people && D.teams[id] && D.teams[id].manager ? clip(D.teams[id].manager, 7) : (D.teams[id] || {}).abbrev || "";
+const narrow = () => innerWidth < 640;
+const clip = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
+// On a phone long team names are clipped so tables keep room for numbers.
+const tn = id => `<span title="${esc(narrow() && T(id).length > 15 ? T(id) : other(id))}">${esc(narrow() ? clip(T(id), 15) : T(id))}</span>`;
+const short = nm => !narrow() || / D\/ST$/.test(nm) ? nm : nm.replace(/^(\S)\S*\s+/, "$1. ");
+const me = id => id === team ? ' class="me"' : "";
+const day = ms => new Date(ms).toLocaleDateString([], {month: "short", day: "numeric"});
+const rec = r => r[0] + "–" + r[1] + (r[2] ? "–" + r[2] : "");
+const m = s => `<span class="m">${s}</span>`;
+const table = (head, rows) => `<div class="scroll"><table><thead><tr>${head.map(h => `<th${h[1] ? ` class="${h[1] === 2 ? "c" : "n"}"` : ""}${h[2] ? ` title="${esc(h[2])}"` : ""}>${h[0]}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+const how = t => `<details class="how"><summary>How this is worked out</summary>${t}</details>`;
+
+$("nav").innerHTML = TABS.map(t => `<button data-t="${t[0]}">${t[1]}</button>`).join("");
+$("nav").onclick = e => { if (e.target.dataset.t) { tab = localStorage.tab = e.target.dataset.t; showTab();
+  const y = document.querySelector("section.on").getBoundingClientRect().top + scrollY - document.getElementById("nav").getBoundingClientRect().bottom;
+  if (scrollY > y) scrollTo(0, Math.max(0, y)); } };
+function showTab() {
+  if (!TABS.some(t => t[0] === tab)) tab = "live";
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === tab));
+  const on = document.querySelector("nav button.on");
+  if (on && on.scrollIntoView) on.scrollIntoView({block: "nearest", inline: "center"});
+}
+$("names").onclick = () => { people = !people; try { localStorage.people = people ? "1" : "0"; } catch (e) {} render(); };
+$("team").onchange = e => { team = +e.target.value; localStorage.team = team; render(); };
+$("refresh").onclick = async () => {
+  $("refresh").disabled = true; $("refresh").textContent = "Refreshing…";
+  try { await fetch("api/refresh", {method: "POST"}); } catch (e) {}
+  await load(); $("refresh").disabled = false; $("refresh").textContent = "Refresh";
+};
+
+async function load() {
+  try {
+    let d;
+    if (!STATIC) { try { const r = await fetch("api/data"); if (!r.ok) throw 0; d = await r.json(); } catch (e) { STATIC = true; } }
+    if (STATIC) { d = await (await fetch("data.json?t=" + Date.now())).json(); $("refresh").style.display = "none"; }
+    if (d.error) { $("err").innerHTML = `<p class="err">${esc(d.error)}</p>`; $("sub").textContent = ""; return; }
+    D = d; if (team == null) team = +localStorage.team || D.my_team_id || +Object.keys(D.teams)[0];
+    if (!D.teams[team]) team = D.my_team_id || +Object.keys(D.teams)[0];
+    render();
+  } catch (e) { $("err").innerHTML = `<p class="err">Could not load the dashboard data.</p>`; }
+}
+
+function render() {
+  $("title").textContent = D.league; document.title = D.league;
+  $("sub").textContent = `${D.season} season · through week ${D.through_week} · updated ${new Date(D.ingested_at).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})}` + (D.live.games_in_progress ? " · live" : "");
+  $("err").innerHTML = D.refresh_error ? `<p class="err">${esc(D.refresh_error)} Showing the last data pulled.</p>` : "";
+  $("team").innerHTML = Object.values(D.teams).map(t => `<option value="${t.team_id}"${t.team_id === team ? " selected" : ""}>${esc(t.name + (t.manager ? " · " + t.manager : ""))}</option>`).join("");
+  const anyNames = Object.values(D.teams).some(t => t.manager);
+  $("names").style.display = anyNames ? "" : "none";
+  $("names").textContent = people ? "Show team names" : "Show real names";
+  const open = new Set([...document.querySelectorAll("#live details[open]")].map(d => d.dataset.k));
+  const y = scrollY;
+  rLive(open); rStandings(); rBench(); rDraft(); rMoves(); rSwap(); rHistory(); rInjuries(); rGlossary(); showTab();
+  scrollTo(0, y);
+}
+
+function rLive(open) {
+  const L = D.live;
+  const mine = g => (g.home && g.home.team_id === team) || (g.away && g.away.team_id === team) ? 1 : 0;
+  const gs = [...L.matchups].sort((a, b) => mine(b) - mine(a));
+  const side = s => !s ? `<div class="side"><span class="nm m">Bye</span></div>` :
+    `<div class="side"><span class="nm">${tn(s.team_id)}</span><span class="pts">${f2(s.points)}</span>
+     <span class="st">Projected ${f2(s.projected)} · ${s.playing} playing, ${s.yet_to_play} to play</span></div>`;
+  const pts = r => !r ? "" : r.state === "bye" ? m("bye") : r.state === "upcoming" ? m("proj " + f1(r.projected)) : f2(r.points);
+  const played = r => r && r.state !== "upcoming" && r.state !== "bye";
+  const nameL = r => r ? `${esc(short(r.name))}<span class="dot ${r.state}" style="margin:0 0 0 6px"></span>` : "";
+  const nameR = r => r ? `<span class="dot ${r.state}"></span>${esc(short(r.name))}` : "";
+  const line = (a, b, label, dim) => { const w = played(a) && played(b) ? (a.points > b.points ? 1 : b.points > a.points ? 2 : 0) : 0;
+    return `<tr${dim ? ' class="m"' : ""}><td class="n">${nameL(a)}</td><td class="n"${w === 1 ? ' style="font-weight:700"' : ""}>${pts(a)}</td><td class="c m">${label}</td><td${w === 2 ? ' style="font-weight:700"' : ""}>${pts(b)}</td><td>${nameR(b)}</td></tr>`; };
+  const compare = g => { if (!g.home || !g.away) return "";
+    const split = s => [s.roster.filter(r => r.slot_id !== 20 && r.slot_id !== 21), s.roster.filter(r => r.slot_id === 20)];
+    const [hs, hb] = split(g.home), [as, ab] = split(g.away); let rows = "";
+    for (let i = 0; i < Math.max(hs.length, as.length); i++) rows += line(hs[i], as[i], (hs[i] || as[i]).slot);
+    for (let i = 0; i < Math.max(hb.length, ab.length); i++) rows += line(hb[i], ab[i], "Bench", true);
+    return `<table class="cmp"><colgroup><col><col class="cp"><col class="cs"><col class="cp"><col></colgroup><thead><tr><th class="n" colspan="2">${tn(g.home.team_id)}</th><th></th><th colspan="2">${tn(g.away.team_id)}</th></tr></thead><tbody>${rows}</tbody></table>`; };
+  $("live").innerHTML = `<h2>Week ${L.week}</h2>
+    <p class="note"><span class="dot playing"></span>playing now &nbsp; <span class="dot upcoming"></span>yet to play &nbsp; <span class="dot done"></span>finished. Scores are as of the last update${L.games_in_progress ? (STATIC ? " and refresh every few minutes while games are on" : " and refresh every minute while games are on") : ""}.</p>
+    <div class="games">` + gs.map(g => { const k = (g.home || {}).team_id;
+      return `<div class="game${mine(g) ? " mine" : ""}">${side(g.home)}${side(g.away)}
+      <details data-k="${k}"${open.has(String(k)) ? " open" : ""}><summary>Lineups</summary><div class="scroll">${compare(g)}</div></details></div>`; }).join("") + "</div>";
+}
+
+function rStandings() {
+  const dv = {}; D.draft.teams.forEach(g => dv[g.team_id] = g.value);
+  const eff = {}; D.bench.teams.forEach(b => eff[b.team_id] = b.efficiency);
+  const mx = Math.max(1, ...D.standings.map(s => Math.abs(s.luck)));
+  const rows = D.standings.map((s, i) => {
+    const w = Math.abs(s.luck) / mx * 50, left = s.luck >= 0 ? 50 : 50 - w;
+    const cls = [s.team_id === team ? "me" : "", i + 1 === D.playoff_teams ? "cut" : ""].join(" ").trim();
+    return `<tr class="${cls}"><td class="n m">${i + 1}</td><td>${tn(s.team_id)}</td><td>${rec([s.wins, s.losses, s.ties])}</td><td class="n">${f1(s.points_for)}</td><td class="n">${f1(s.points_against)}</td><td>${s.all_play.replace("-", "–")}</td><td class="n">${f1(s.expected_wins)}</td><td class="n">${sg(s.luck)}</td><td><div class="bar"><i style="left:${left}%;width:${w}%;background:rgb(var(--${s.luck >= 0 ? "pos" : "neg"}))"></i></div></td><td class="n">${f1(dv[s.team_id])}</td><td class="n">${eff[s.team_id] ? Math.round(eff[s.team_id] * 100) + "%" : ""}</td><td class="n">${s.starter_weeks_hurt || m("0")}</td></tr>`; });
+  $("standings").innerHTML = `<h2>Standings and luck</h2>
+    <p class="note">Weeks 1–${D.through_week}. Luck is real wins minus expected wins.</p>` +
+    how(` All-play is a team's record had it played every other team every week. Expected wins applies that win rate to the games played. Draft value is explained on the Draft tab and lineup efficiency on the Lineups tab. Hurt is the weeks this team's starters have missed through injuries that began while they were on this team, from the NFL's official injury listings; the Injuries tab has every season. Points for and against can include the week in progress.`) +
+    table([["",1],["Team"],["Record"],["PF",1],["PA",1],["All-play"],["Exp. wins",1],["Luck",1],[""],["Draft value",1,"Points over replacement from the players this team drafted"],["Lineup eff.",1,"Actual points as a share of the best possible lineup"],["Hurt",1,"Starters hurt: weeks this team's starters missed through injuries that began on this team"]], rows);
+}
+
+function rBench() {
+  const B = D.bench, weeks = [...new Set(B.weeks.map(w => w.week))].sort((a, b) => a - b);
+  const by = {}; B.weeks.forEach(w => by[w.team_id + ":" + w.week] = w);
+  const sum = B.teams.map(t => `<tr${me(t.team_id)}><td>${tn(t.team_id)}</td><td class="n">${f1(t.total_lost)}</td><td class="n">${Math.round(t.efficiency * 100)}%</td><td class="c">${rec(t.record)}</td><td class="n">${t.avoidable_losses || m("0")}</td><td class="n">${t.one_call_losses || m("0")}</td><td class="c">${rec(t.perfect_record)}</td><td class="c">${rec(t.ideal_record)}</td></tr>`);
+  const modes = narrow() ? {lost: "Points left", perfect: "Best vs. real", ideal: "Best vs. best"} : {lost: "Points left on bench", perfect: "Best lineup vs. their real lineup", ideal: "Best lineup vs. their best lineup"};
+  const mxLost = Math.max(...B.weeks.map(w => w.lost));
+  const cell = w => { if (!w) return "<td></td>";
+    const tipTxt = w.opp_id == null ? "" : `Week ${w.week} vs ${T(w.opp_id)}: ${w.result === "W" ? "won" : w.result === "L" ? "lost" : "tied"} ${f1(w.actual)}–${f1(w.opp_actual)}. Best lineup ${f1(w.optimal)}; their best ${f1(w.opp_optimal)}.`;
+    let txt, bg, hit;
+    if (gridMode === "lost") { txt = f1(w.lost); bg = `rgba(var(--tint),${(0.22 * w.lost / mxLost).toFixed(2)})`; hit = w.avoidable_loss; }
+    else { const v = gridMode === "perfect" ? w.perfect_margin : w.ideal_margin, r = gridMode === "perfect" ? w.perfect_result : w.ideal_result;
+      txt = sg(v); bg = `rgba(var(--${v >= 0 ? "pos" : "neg"}),${Math.min(0.4, Math.abs(v) / 110).toFixed(2)})`; hit = r !== w.result; }
+    return `<td class="n${hit ? " hit" : ""}" style="background:${bg}" data-tip="${esc(tipTxt)}">${txt}</td>`; };
+  const grid = B.teams.map(t => `<tr${me(t.team_id)}><td>${tn(t.team_id)}</td>` + weeks.map(wk => cell(by[t.team_id + ":" + wk])).join("") + "</tr>");
+  const gridNote = {lost: `Darker means more points left on the bench. <span class="bx"></span>Outlined: a loss the best lineup would have won.`,
+    perfect: `Margin if this team had set its best lineup against the opponent's real one. Blue is a win, red a loss. <span class="bx"></span>Outlined: a different result from what happened.`,
+    ideal: `Margin if both teams had set their best lineups. Blue is a win, red a loss. <span class="bx"></span>Outlined: a different result from what happened.`}[gridMode];
+  const game = c => c.result === "W" ? m("Won by " + f1(c.margin)) : c.result === "L" ? `Lost by ${f1(-c.margin)}` : m("Tied");
+  const callRow = (c, tagCol) => `<tr${me(c.team_id)}><td>${tn(c.team_id)}</td><td class="n">${c.week}</td><td>${esc(c.sat)} ${m(f1(c.sat_points))}</td><td>${esc(c.started)} ${m(f1(c.started_points))}</td><td class="n">${f1(c.gain)}</td><td>${game(c)} ${m("vs " + tn(c.opp_id))}</td>${tagCol ? `<td>${c.flips ? '<span class="tag bad">Cost the game</span>' : ""}</td>` : ""}</tr>`;
+  const callHead = [["Team"],["Wk",1],["Sat"],["Started instead"],["Swing",1],["Game"]];
+  $("bench").innerHTML = `<h2>Lineup decisions</h2>
+    <p class="note">Weeks 1–${D.through_week}. How much each manager left on the bench, and what it cost them.</p>` +
+    how(` The best lineup is the highest-scoring legal lineup from that week's starters and bench; IR is not counted. "Winnable losses" are games lost that the best lineup would have won against the opponent's real lineup. "Lost on one call" counts losses that a single sit/start swap would have flipped. "If perfect" is the record with the best lineup every week against real opposing lineups; "both perfect" assumes every opponent also set their best.`) +
+    table([["Team"],["Points left",1],["Efficiency",1],["Record",2],["Winnable losses",1],["Lost on one call",1],["If perfect",2],["Both perfect",2]], sum) +
+    `<h2>Week by week</h2>
+    <div class="row"><div class="seg" id="gm">${Object.entries(modes).map(([k, v]) => `<button data-m="${k}" class="${k === gridMode ? "on" : ""}">${v}</button>`).join("")}</div></div>
+    <p class="note">${gridNote}</p>` +
+    `<div id="grid" class="matrix">${table([["Team"], ...weeks.map(w => [w, 1])], grid)}</div>` +
+    `<h2>Sit/start calls that cost a game</h2><p class="note">Losses where one swap, the bench player for the weakest starter he could replace, would have changed the result.</p>` +
+    (B.game_losing_calls.length ? table(callHead, B.game_losing_calls.map(c => callRow(c, false))) : '<p class="note">None so far.</p>') +
+    `<h2>Biggest sit/start swings</h2><p class="note">The largest single-swap gaps of the season, whatever the result.</p>` +
+    table(callHead, B.worst_calls.map(c => callRow(c, false)));
+  $("gm").onclick = e => { if (e.target.dataset.m) { gridMode = e.target.dataset.m; const y = scrollY; rBench(); scrollTo(0, y); } };
+  hoverTips($("grid"));
+}
+
+function hoverTips(el) {
+  const tip = $("tip");
+  el.onmousemove = e => { const c = e.target.closest("[data-tip]"); if (!c || !c.dataset.tip) { tip.style.display = "none"; return; }
+    tip.textContent = c.dataset.tip; tip.style.display = "block";
+    tip.style.left = Math.min(e.clientX + 14, innerWidth - 285) + "px"; tip.style.top = e.clientY + 16 + "px"; };
+  el.onmouseleave = () => tip.style.display = "none";
+}
+
+function rDraft() {
+  const R = D.draft, mine = R.picks.filter(p => p.team_id === team), rp = R.replacement;
+  const tag = p => p.label ? ` <span class="tag ${p.label === "steal" ? "good" : "bad"}">${p.label}</span>` : "";
+  const teams = R.teams.map(g => `<tr${me(g.team_id)}><td class="n m">${g.rank}</td><td>${tn(g.team_id)}</td><td class="n">${f1(g.value)}</td><td class="n">${sg(g.vs_slot)}</td><td>${esc(g.best.name)} ${m(`#${g.best.pick} · ${sg(g.best.vs_slot)}`)}</td><td>${esc(g.worst.name)} ${m(`#${g.worst.pick} · ${sg(g.worst.vs_slot)}`)}</td><td class="n">${g.steals}</td><td class="n">${g.busts}</td></tr>`);
+  const pass = p => !p.graded ? m("not graded") : p.passed ? `${esc(p.passed.name)} ${m(`${p.passed.pos} · #${p.passed.pick}`)}` : m("nobody");
+  const picks = mine.map(p => `<tr><td class="n m">${p.pick}</td><td>${esc(p.name)}${tag(p)}</td><td>${p.pos}${p.pos_drafted} ${m("→")} ${p.pos_finish ? p.pos + p.pos_finish : "–"}</td><td class="n">${f1(p.points)}</td><td class="n">${p.graded ? f1(p.over) : m("–")}</td><td class="n" title="${p.graded ? "A pick here usually returns " + f1(p.expected) : ""}">${p.graded ? sg(p.vs_slot) : m("–")}</td><td>${pass(p)}</td><td class="n">${p.passed ? "+" + f1(p.passed.gap) : ""}</td><td>${p.wait ? `${esc(p.wait.name)} ${m(p.wait.pick ? "#" + p.wait.pick : "undrafted")}` : p.graded ? m("nobody") : ""}</td><td class="n">${p.wait ? sg(p.wait.edge) : ""}</td></tr>`);
+  const misses = R.misses.map(r => `<tr${me(r.team_id)}><td>${tn(r.team_id)}</td><td>${esc(r.took)} ${m(`${r.took_pos} · #${r.took_pick} · ${f1(r.took_over)}`)}</td><td>${esc(r.name)} ${m(`${r.pos} · #${r.pick} · ${f1(r.over)}`)}</td><td>${tn(r.taken_by)}</td><td class="n">+${f1(r.gap)}</td></tr>`);
+  const redraft = R.redraft.slice(0, 36).map(r => `<tr${me(r.team_id)}><td class="n m">${r.redraft_pick}</td><td>${esc(r.name)}</td><td>${r.pos}${r.pos_finish || ""}</td><td class="n">${f1(r.points)}</td><td class="n">${f1(r.over)}</td><td class="n">${r.actual_pick ? "#" + r.actual_pick : m("undrafted")}</td><td class="n">${r.actual_pick ? (d => d > 0 ? "↑ " + d : d < 0 ? "↓ " + -d : m("–"))(r.actual_pick - r.redraft_pick) : ""}</td><td>${r.team_id ? tn(r.team_id) : m("–")}</td></tr>`);
+  const und = R.undrafted.map(u => `<tr${me(u.on_team_id)}><td>${esc(u.name)}</td><td>${u.pos}${u.pos_finish || ""}</td><td class="n">${f1(u.points)}</td><td class="n">${f1(u.over)}</td><td>${u.on_team_id ? tn(u.on_team_id) : m("Free agent")}</td></tr>`);
+  const replTxt0 = Object.entries(rp).map(([k, v]) => `${k}${v.rank}`).join(", ");
+  const ex = mine.find(p => p.passed && p.wait) || mine.find(p => p.graded), exr = ex && rp[ex.pos];
+  const pickHow = !ex ? "" : ` Worked through for ${esc(ex.name)}, pick ${ex.pick}:<ul>
+    <li><b>Drafted → now.</b> He was the ${ex.pos}${ex.pos_drafted} off the board and is now ${ex.pos_finish ? ex.pos + ex.pos_finish : "unranked"} by points.</li>
+    <li><b>Pts.</b> His fantasy points in weeks 1 to ${R.weeks}: ${f1(ex.points)}.</li>
+    <li><b>Over repl.</b> His points minus the replacement-level ${ex.pos}'s. ${ex.pos}${exr.rank} has ${f1(exr.points)}, so ${f1(ex.points)} − ${f1(exr.points)} = ${f1(ex.points - exr.points)}${ex.points < exr.points ? ", which counts as 0.0 because he would simply be swapped out" : ""}.</li>
+    <li><b>Vs. slot.</b> His over-replacement minus what a pick around ${ex.pick} usually returns, which is ${f1(ex.expected)} across this league's four drafts: ${f1(ex.over)} − ${f1(ex.expected)} = ${sg(ex.vs_slot)}.</li>
+    ${ex.passed ? `<li><b>Passed over.</b> The player with the highest over-replacement, at any position, taken after this pick and before this team's next one: ${esc(ex.passed.name)}, who is ${f1(ex.passed.over)} over replacement.</li>
+    <li><b>Gap.</b> His over-replacement minus this pick's: ${f1(ex.passed.over)} − ${f1(ex.over)} = +${f1(ex.passed.gap)}. It is what was given up by making this pick, and only appears when someone better was there.</li>` : ""}
+    ${ex.wait ? `<li><b>Could have waited for.</b> The ${ex.pos} with the highest over-replacement who was still on the board at this team's next pick, whether drafted later or never: ${esc(ex.wait.name)}, who is ${f1(ex.wait.over)} over replacement.</li>
+    <li><b>Edge.</b> This pick's over-replacement minus his: ${f1(ex.over)} − ${f1(ex.wait.over)} = ${sg(ex.wait.edge)}. Positive means the pick beat the fallback; negative means the fallback was better.</li>` : ""}
+    </ul>Gap and edge answer different questions. Gap looks at any position but only at players who would have been gone by the next turn. Edge looks at the same position and only at players who would still have been there. A large gap with an edge near zero means the position was taken too early; a large negative edge means a better player at that position was available later. The same player can be listed against several picks, but could only have been taken once. Replacement level is the last starter in a league this size (${replTxt0}). For back-to-back picks both columns look past the pair. Points are through week ${R.weeks}, while the "now" rank uses the full season total, which can include the week in progress.`;
+  const replTxt = Object.entries(rp).map(([k, v]) => `${k}${v.rank} (${f1(v.points)})`).join(", ");
+  $("draft").innerHTML = `<h2>Draft value</h2>
+    <p class="note">Points over replacement from the players each team drafted, through week ${R.weeks}. "Vs. slot" compares that with what those draft slots usually return.</p>` +
+    how(` A player's value is his season points minus those of the replacement-level player at his position, the last starter in a league this size: ${replTxt}. Below replacement counts as zero, since he would simply be swapped out. A team's draft value is the total for everyone it drafted; kickers and defenses are left out. "Vs. slot" subtracts what a pick in that part of the draft normally returns: the average for picks within six spots, across all four of this league's drafts. A steal or bust is ${Math.round(R.label_threshold)} points clear of that either way. It grades the players as drafted, so later trades and drops don't matter, injuries count against a pick, and bench players count in full.`) +
+    table([["",1],["Team"],["Value",1,"Total points over replacement from drafted players"],["Vs. slot",1,"Value above or below what those draft slots usually return"],["Best pick"],["Worst pick"],["Steals",1],["Busts",1]], teams) +
+    `<h2>Draft slot vs. season points</h2>
+    <div class="row"><label class="ctl">Position <select id="pos">${["All","QB","RB","WR","TE","K","D/ST"].map(p => `<option${p === pos ? " selected" : ""}>${p}</option>`).join("")}</select></label>
+      <div class="key"><span><span class="sw" style="--c:var(--accent)"></span>${tn(team)}</span><span><span class="sw" style="--c:var(--other)"></span>Everyone else</span></div></div>
+    <div id="chart"></div>
+    <h2>${tn(team)}, pick by pick</h2>
+    <p class="note">"Vs. slot" is the pick's points over replacement against what a pick there usually returns. "Passed over" is the most valuable player at any position taken before this team's next turn. "Could have waited for" is the best player at the same position who was still there at the next turn, and "Edge" is how much better this pick was than him.</p>` +
+    how(pickHow) +
+    table([["#",1],["Player"],["Drafted → now"],["Pts",1],["Over repl.",1],["Vs. slot",1],["Passed over"],["Gap",1],["Could have waited for"],["Edge",1,"This pick's points over replacement minus his"]], picks) +
+    `<h2>Biggest misses</h2><p class="note">The widest gaps, in points over replacement, between a pick and a player taken before that team's next turn.</p>` +
+    table([["Team"],["Took"],["Passed over"],["Went to"],["Gap",1]], misses) +
+    `<h2>The redraft</h2><p class="note">The first three rounds if the league drafted today, ordered by points over replacement.</p>` +
+    how(` A position's top scorer is not automatically a top pick. A quarterback is measured against QB${rp.QB.rank}, who has ${f1(rp.QB.points)} points, so even the QB1's margin can be smaller than a top running back's or receiver's. The arrow shows how far a player rose or fell from where he was actually taken.`) +
+    table([["Redraft",1],["Player"],["Rank"],["Pts",1],["Over repl.",1],["Actual pick",1],["Move",1],["Drafted by"]], redraft) +
+    `<h2>Best undrafted players</h2>` + table([["Player"],["Rank"],["Pts",1],["Over repl.",1],["Now with"]], und);
+  $("pos").onchange = e => { pos = e.target.value; const y = scrollY; rDraft(); scrollTo(0, y); };
+  chart();
+}
+
+function chart() {
+  const W = 1120, H = 400, mg = {l: 36, r: 10, t: 14, b: 40};
+  const ps = D.draft.picks.filter(p => pos === "All" || p.pos === pos);
+  const maxX = D.draft.picks.length, maxY = Math.max(50, ...ps.map(p => p.points)) * 1.06;
+  const x = v => mg.l + (v - 1) / (maxX - 1) * (W - mg.l - mg.r), y = v => H - mg.b - v / maxY * (H - mg.t - mg.b);
+  const n = Object.keys(D.teams).length;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Draft pick against season points">`;
+  for (let v = 0; v <= maxY; v += 50) s += `<line x1="${mg.l}" x2="${W - mg.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--${v ? "rule" : "ink3"})"/><text x="${mg.l - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let r = 1; r <= maxX / n; r++) s += `<text x="${x((r - 1) * n + (n + 1) / 2)}" y="${H - mg.b + 17}" text-anchor="middle">${r}</text>`;
+  s += `<text x="${(W + mg.l) / 2}" y="${H - 4}" text-anchor="middle">Draft round</text><text x="${mg.l}" y="10">Season points</text>`;
+  const dot = (p, mine) => `<circle cx="${x(p.pick)}" cy="${y(p.points)}" r="${mine ? 5.5 : 3.5}" fill="var(--${mine ? "accent" : "other"})" ${mine ? 'stroke="var(--bg)" stroke-width="2"' : 'opacity=".7"'}/><circle cx="${x(p.pick)}" cy="${y(p.points)}" r="9" fill="transparent" data-i="${p.pick}"/>`;
+  ps.filter(p => p.team_id !== team).forEach(p => s += dot(p, false));
+  const mine = ps.filter(p => p.team_id === team);
+  mine.forEach(p => s += dot(p, true));
+  mine.forEach((p, i) => { const right = x(p.pick) > W - 150;
+    s += `<text class="lbl" x="${x(p.pick) + (right ? -9 : 9)}" y="${y(p.points) + (i % 2 ? 17 : -8)}" text-anchor="${right ? "end" : "start"}">${esc(p.name.split(" ").slice(-1)[0] === "D/ST" ? p.name : p.name.replace(/^(\S)\S*\s/, "$1. "))}</text>`; });
+  $("chart").innerHTML = s + "</svg>";
+  const tip = $("tip");
+  $("chart").onmousemove = e => { const i = e.target.dataset && e.target.dataset.i; if (!i) { tip.style.display = "none"; return; }
+    const p = D.draft.picks[i - 1];
+    tip.innerHTML = `<b>${esc(p.name)}</b>, ${p.pos}<br>Pick ${p.pick}, round ${p.round}, ${tn(p.team_id)}<br>${f1(p.points)} pts. Drafted ${p.pos}${p.pos_drafted}, now ${p.pos_finish ? p.pos + p.pos_finish : "unranked"}`;
+    tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 14, innerWidth - 285) + "px"; tip.style.top = e.clientY + 16 + "px"; };
+  $("chart").onmouseleave = () => tip.style.display = "none";
+}
+
+function rMoves() {
+  const trades = D.trades.map(t => `<div class="trade"><div class="m">${day(t.date)}<br>Weeks ${t.first_week}–${D.through_week}</div>` +
+    t.sides.map(s => `<div><div>${tn(s.team_id)} got</div><div class="tot">${f1(s.points)}</div>${s.players.map(p => `<div>${esc(p.name)} ${m(`${p.pos} · ${f1(p.points)}, ${f1(p.started_points)} started`)}</div>`).join("") || m("nothing")}</div>`).join("") + "</div>");
+  const wv = D.waivers.map(w => `<tr${me(w.team_id)}><td>${tn(w.team_id)}</td><td class="n">${w.adds}</td><td class="n">${f1(w.started_points)}</td><td class="n">${f1(w.roster_points)}</td><td>${w.best ? `${esc(w.best.name)} ${m(`${f1(w.best.started_points)} started · added wk ${w.best.week}`)}` : ""}</td></tr>`);
+  const dr = D.drop_regret.map(d => `<tr${me(d.team_id)}><td>${tn(d.team_id)}</td><td>${esc(d.name)} ${m(d.pos)}</td><td class="n">${d.week}</td><td class="n">${d.weeks}</td><td class="n">${f1(d.started_points)}</td><td class="n">${f1(d.own_points)}</td><td class="n">${sg(d.net)}</td><td>${tn(d.beneficiary_id)}</td></tr>`);
+  const act = D.activity.map(a => `<tr${me(a.team_id)}><td class="m">${day(a.date)}</td><td>${tn(a.team_id)}</td><td class="wrap">${a.adds.length ? "Added " + a.adds.map(esc).join(", ") : ""}${a.adds.length && a.drops.length ? "; " : ""}${a.drops.length ? (a.adds.length ? "dropped " : "Dropped ") + a.drops.map(esc).join(", ") : ""} ${m(a.kind === "Waiver" ? "waivers" : "")}</td></tr>`);
+  $("moves").innerHTML = `<h2>Trade ledger</h2><p class="note">Points scored since each trade by the players each side received, in completed weeks. A player traded again keeps counting here.</p>` + (trades.join("") || '<p class="note">No trades yet.</p>') +
+    `<h2>Waiver wire</h2><p class="note">Points from players each manager added in season, while on that manager's roster.</p>` +
+    table([["Team"],["Adds",1],["Started pts",1],["Roster pts",1],["Best pickup"]], wv) +
+    `<h2>Drop regret</h2><p class="note">Players a manager cut who went on to start for someone else, against what the manager started instead. A positive net is a real regret; a negative one means the replacement did better.</p>` +
+    how(` For each week the dropped player was in another team's starting lineup, his points are set beside the weakest starter on the dropping team that he could have replaced (same position, or FLEX for a back, receiver or tight end). Weeks he sat on a bench or in free agency are not counted.`) +
+    table([["Dropped by"],["Player"],["Dropped wk",1],["Weeks started",1],["Pts since",1,"His points in the weeks he started for another team"],["Replacement starter",1,"Points from the starter he would have replaced, same weeks"],["Net",1],["Mostly for"]], dr) +
+    `<h2>Recent moves</h2>` + table([["Date"],["Team"],["Move"]], act);
+}
+
+function rSwap() {
+  const SC = D.history.schedules, ms = D.history.managers, ids = D.standings.map(s => s.team_id);
+  const keyOf = {}; ms.forEach(x => { if (x.team_id) keyOf[x.team_id] = x.key; });
+  const yrs = [...SC.seasons].reverse();
+  if (swapSeason !== "all" && !SC.swap[swapSeason]) swapSeason = String(SC.current);
+  const cell = (a, b) => { const ka = keyOf[a], kb = keyOf[b], from = swapSeason === "all" ? yrs : [swapSeason];
+    let v = 0, n = 0; from.forEach(y => { const r = (SC.swap[y] || {})[ka]; if (r && r[kb] != null && r[ka] != null) { v += r[kb]; n++; } });
+    return n ? v : null; };
+  const num = v => v == null ? m("–") : v % 1 ? v.toFixed(1) : v;
+  const head = [["Team, with the schedule of →"], ...ids.map(i => [esc(short2(i)), 2, T(i)])];
+  const rows = ids.map(a => { const real = cell(a, a);
+    return `<tr${me(a)}><td>${tn(a)}</td>` + ids.map(b => { const v = cell(a, b), d = v == null || real == null ? 0 : v - real;
+      return `<td class="c${a === b ? " hit" : ""}" data-tip="${esc(a === b ? T(a) + ": real record" : T(a) + " with " + T(b) + "'s schedule")}" style="${a !== b && d ? `background:rgba(var(--${d > 0 ? "pos" : "neg"}),${Math.min(0.4, Math.abs(d) * (swapSeason === "all" ? 0.05 : 0.1))})` : ""}">${num(v)}</td>`; }).join("") + "</tr>"; });
+  const span = swapSeason === "all" ? `every season, ${SC.seasons[0]} to ${SC.current} week ${SC.through_week}, added together` : swapSeason == SC.current ? `weeks 1–${SC.through_week}` : `the ${swapSeason} regular season`;
+  const seg = `<div class="row"><div class="seg" id="sw">${["all", ...yrs.map(String)].map(y => `<button data-y="${y}" class="${y === swapSeason ? "on" : ""}">${y === "all" ? "All seasons" : y}</button>`).join("")}</div></div>`;
+  const who = x => esc(narrow() ? clip(x.team_id ? T(x.team_id) : x.name || "Former manager", 15) : (x.team_id ? T(x.team_id) : x.name || "Former manager"));
+  const nameK = k => { const x = ms.find(z => z.key === k); return x ? (x.team_id ? T(x.team_id) : x.name || "Former manager") : ""; };
+  const ord = r => r + (r === 1 ? "st" : r === 2 ? "nd" : r === 3 ? "rd" : "th");
+  const TS = SC.title_seasons, pct = x => Math.round(x * 100) + "%";
+  const trows = SC.titles.map(r => { const mgr = ms.find(z => z.key === r.key) || {};
+    const fin = y => ((mgr.finishes || {})[y] || {}).rank;
+    const won = TS.filter(y => r.by_season[y] && r.by_season[y].swaps.length).map(y => `${y}: ${r.by_season[y].swaps.map(k => esc(nameK(k))).join(", ")}`).join("; ");
+    return `<tr${me(r.team_id)}><td>${who(r)}</td><td class="n">${r.titles || m("0")}</td><td class="n">${r.expected.toFixed(2)}</td>${TS.map(y => { const c = r.by_season[y];
+      if (!c) return `<td class="n">${m("–")}</td>`;
+      const f = fin(y);
+      return `<td class="n" title="${esc(`Made the playoffs in ${pct(c.playoff_odds)} of schedules. Seeded ${ord(c.seed)}${f ? ", finished " + ord(f) : ""}.`)}">${c.champion ? "<b>" + pct(c.title_odds) + "</b>" : pct(c.title_odds)} ${m(f ? ord(f) : "")}</td>`; }).join("")}<td class="wrap">${won || m("–")}</td></tr>`; });
+  $("swap").innerHTML = `<h2>Schedule swap</h2>
+    <p class="note">Wins each team would have with another team's schedule, ${span}. The outlined diagonal is the real total; blue is more wins than reality, red fewer. Read across your row to see what the schedule has done to you.</p>` + seg + `<div id="swapgrid" class="matrix">${table(head, rows)}</div>` +
+    (TS.length ? `<h2>Titles by schedule</h2><p class="note">Each manager's chance of winning the title across ${SC.samples.toLocaleString()} random schedules, using every team's real weekly scores, next to where they actually finished. The champion's figure is in bold. Expected is the chances added up across seasons. Hover a season for playoff chances and seed.</p>` +
+    how(` Each random schedule keeps the league's real schedule and deals the teams into its slots at random. The regular season is replayed with every team's real score each week, the top ${D.playoff_teams} are seeded by wins and then points scored, and the bracket is played with the real playoff-week scores, one round a week, with standard seeding (best against worst), byes for the top seeds when the field needs them, and no reseeding. A tied playoff game goes to the higher seed. Every team has a real score in every playoff week because the consolation games count, though teams already knocked out don't always try. Replaying the real schedule this way gives the real seeds and champion every season. "Title with the schedule of" lists the managers whose schedule, traded straight, would have won that manager the title. ${SC.current} is left out until it finishes.`) +
+    table([["Manager"],["Titles",1],["Expected",1,"Titles a manager would win on average across random schedules"], ...TS.map(y => [y, 1]), ["Title with the schedule of"]], trows) : "");
+  $("sw").onclick = e => { if (e.target.dataset.y) { swapSeason = e.target.dataset.y; const y = scrollY; rSwap(); scrollTo(0, y); } };
+  hoverTips($("swapgrid"));
+}
+
+function rHistory() {
+  const H = D.history, ms = H.managers, name = k => { const x = ms.find(z => z.key === k); return x && x.team_id ? T(x.team_id) : x && x.name ? x.name : ""; };
+  const cn = t => esc(narrow() ? clip(t || "", 15) : (t || "")), who = x => cn(x.team_id ? T(x.team_id) : x.name || "Former manager");
+  const fin = r => r == null ? m("–") : r === 1 ? "<b>1st</b>" : r + (r === 2 ? "nd" : r === 3 ? "rd" : "th");
+  const all = ms.filter(x => x.seasons).map(x => `<tr${me(x.team_id)}><td>${who(x)}</td><td class="c">${x.wins}–${x.losses}${x.ties ? "–" + x.ties : ""}</td><td class="n">${x.win_pct == null ? "–" : x.win_pct.toFixed(3).replace(/^0/, "")}</td><td class="n">${f1(x.points_for / Math.max(1, x.wins + x.losses + x.ties))}</td><td class="n">${x.titles || m("0")}</td><td class="n">${x.playoffs}</td>${H.seasons.map(s => `<td class="c" title="${esc(x.finishes[s] ? x.finishes[s].name + ", " + x.finishes[s].record : "")}">${fin(x.finishes[s] && x.finishes[s].rank)}</td>`).join("")}<td class="n">${f1(x.avg_finish)}</td></tr>`);
+  const order = ms.filter(x => x.team_id);
+  const h2h = order.map(a => `<tr${me(a.team_id)}><td>${cn(T(a.team_id))}</td>` + order.map(b => { if (a.key === b.key) return `<td class="c m">·</td>`;
+    const r = (H.h2h[a.key] || {})[b.key]; if (!r) return `<td class="c m">–</td>`; const d = r[0] - r[1];
+    return `<td class="c" data-tip="${esc(T(a.team_id) + " vs " + T(b.team_id))}" style="${d ? `background:rgba(var(--${d > 0 ? "pos" : "neg"}),${Math.min(0.4, Math.abs(d) * 0.09)})` : ""}">${r[0]}–${r[1]}</td>`; }).join("") + "</tr>");
+  const game = (rows, fmt) => table([["Team"],["Season"],["Wk",1],["Score",1],["Against"]], rows.map(g => `<tr${me((ms.find(z => z.key === g.key) || {}).team_id)}><td>${cn(g.team)} ${m(narrow() ? "" : esc(name(g.key) !== g.team ? name(g.key) : ""))}</td><td>${g.season}${g.playoff ? " " + m("playoffs") : ""}</td><td class="n">${g.week}</td><td class="n">${fmt(g)}</td><td>${cn(g.opp_team)} ${m(f1(g.opp_points))}</td></tr>`));
+  const DR = H.drafting, ord = r => r + (r === 1 ? "st" : r === 2 ? "nd" : r === 3 ? "rd" : "th");
+  const drRows = DR.rows.map(r => `<tr${me(r.team_id)}><td>${who(r)}</td>${DR.seasons.map(y => { const v = r.by_season[y]; return `<td class="n" title="${v ? esc("Vs. slot " + sg(v.vs_slot)) : ""}">${v ? `${v.rank === 1 ? "<b>" + f1(v.value) + "</b>" : f1(v.value)} ${m(ord(v.rank))}` : m("–")}</td>`; }).join("")}<td class="n">${r.avg_rank.toFixed(1)}</td><td class="n">${ord(r.best_rank)} ${m("/")} ${ord(r.worst_rank)}</td><td class="n">${f1(r.finished_value)}</td><td class="n">${sg(r.finished_vs_slot)}</td></tr>`);
+  const pickTable = rows => table([["Manager"],["Pick"],["Season"],["Over repl.",1],["Vs. slot",1]], rows.map(x => `<tr${me((ms.find(z => z.key === x.key) || {}).team_id)}><td>${cn(name(x.key) || x.team)}</td><td>${esc(x.name)} ${m(`${x.pos} · #${x.pick}`)}</td><td>${x.season}</td><td class="n">${f1(x.over)}</td><td class="n">${sg(x.vs_slot)}</td></tr>`));
+  const tend = H.tendencies.map(t => { const e = Object.entries(t.early).sort((a, b) => b[1] - a[1]).map(([p, c]) => `${p} ${c}`).join(" · ");
+    return `<tr${me(t.team_id)}><td>${who(t)}</td><td class="n">${t.drafts}</td><td>${e}</td><td class="n">${f1(t.first_qb)}</td><td class="n">${f1(t.first_te)}</td></tr>`; });
+  const when = f => f.picks.map(x => `${x.season} R${x.round}`).join(", ");
+  const favRows = [...H.tendencies].sort((a, b) => ((b.favorites[0] || {}).times || 0) - ((a.favorites[0] || {}).times || 0) || b.favorites.length - a.favorites.length)
+    .map(t => { const [top, ...rest] = t.favorites;
+      return `<tr${me(t.team_id)}><td>${who(t)}</td><td>${top ? `${esc(top.name)} ${m(`${top.pos} · ${top.times} of ${t.drafts} drafts · ${when(top)}`)}` : m("No repeats")}</td><td class="n">${t.favorites.length}</td><td class="wrap">${rest.map(f => `<span title="${esc(when(f))}">${esc(f.name)}</span>`).join(", ")}</td></tr>`; });
+  const big = H.tendencies.flatMap(t => t.favorites.filter(f => f.times >= 3).map(f => `${esc(t.name || "Former manager")} has taken ${esc(f.name)} in ${f.times} of ${t.drafts} drafts`));
+  $("history").innerHTML = `<h2>All-time</h2>
+    <p class="note">Finished seasons, ${H.seasons[0]}–${H.seasons[H.seasons.length - 1]}, by manager under this year's team name. Records are regular season.</p>` +
+    table([["Manager"],["Record",2],["Win %",1],["Pts / game",1],["Titles",1],["Playoffs",1], ...H.seasons.map(s => [s, 2]),["Avg. finish",1]], all) +
+    `<h2>Drafting, season by season</h2><p class="note">Draft value for every draft on record, with that season's rank among the ${Object.keys(D.teams).length} teams, ordered by average rank. Finished seasons use the full year; ${DR.current} is to date and on a smaller scale. Hover a cell for the value against draft slot.</p>` +
+    how(` Same measure as the Draft tab: total points over replacement from the players each manager drafted, with replacement levels worked out separately for each season. "Finished total" and "Vs. slot" add up the completed seasons only.`) +
+    table([["Manager"], ...DR.seasons.map(y => [y === DR.current ? y + " so far" : y, 1]), ["Avg. rank",1], ["Best / worst",1], ["Finished total",1], ["Vs. slot",1]], drRows) +
+    `<div class="two"><div><h2>Best picks, ${DR.seasons[0]}–${DR.seasons[DR.seasons.length - 2]}</h2>${pickTable(DR.best_picks)}</div><div><h2>Worst picks</h2>${pickTable(DR.worst_picks)}</div></div>` +
+    `<h2>Team names</h2><p class="note">Every name each team has gone by, one per season. Only the name a team finished each season with is on record, so mid-season changes don't appear.</p>` +
+    table([["Now"], ...H.seasons.map(y => [y])], ms.filter(x => x.seasons).map(x => `<tr${me(x.team_id)}><td>${who(x)}</td>${H.seasons.map(y => `<td>${x.finishes[y] ? esc(x.finishes[y].name) : m("–")}</td>`).join("")}</tr>`)) +
+    `<h2>Head to head</h2><p class="note">Row team's record against column team, regular season and playoff bracket games, including this season so far.</p>` +
+    `<div id="h2h" class="matrix">${table([[""], ...order.map(b => [esc(short2(b.team_id)), 2, T(b.team_id)])], h2h)}</div>` +
+    `<div class="two"><div><h2>Highest scores</h2>${game(H.records.high, g => f1(g.points))}</div><div><h2>Lowest scores</h2>${game(H.records.low, g => f1(g.points))}</div>
+     <div><h2>Biggest blowouts</h2>${game(H.records.blowout, g => "+" + f1(g.points - g.opp_points))}</div><div><h2>Most points in a loss</h2>${game(H.records.heartbreak, g => f1(g.points))}</div></div>` +
+    `<h2>Draft habits</h2><p class="note">Positions taken in rounds 1–3 across every draft on record, and the average round of each manager's first quarterback and tight end.</p>` +
+    table([["Manager"],["Drafts",1],["Rounds 1–3"],["First QB, avg. round",1],["First TE, avg. round",1]], tend) +
+    `<h2>Favourite players</h2><p class="note">Players the same manager has drafted in more than one season. ${big.length ? big.join("; ") + "." : "Nobody has taken the same player three times yet."} Hover a name for the years and rounds.</p>` +
+    table([["Manager"],["Most drafted"],["Repeats",1,"Players drafted in two or more seasons"],["Also drafted more than once"]], favRows);
+  hoverTips($("h2h"));
+}
+
+function rInjuries() {
+  const ms = D.history.managers, name = k => { const x = ms.find(z => z.key === k); return x && x.team_id ? T(x.team_id) : x && x.name ? x.name : ""; };
+  const cn = t => esc(narrow() ? clip(t || "", 15) : (t || "")), who = x => cn(x.team_id ? T(x.team_id) : x.name || "Former manager");
+  const IJ = D.history.injuries, most = {}, LISTED = {IR: "IR", PUP: "PUP", NFI: "NFI", OUT: "Out", DOUBTFUL: "Doubtful"};
+  const listed = l => Object.entries(l).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${LISTED[k] || k} ${n}`).join(" · ");
+  const byTeam = k => (ms.find(z => z.key === k) || {}).team_id;
+  const ijTable = (part, tipOf) => { const most = {};
+    IJ.seasons.forEach(y => { most[y] = Math.max(0, ...part.rows.map(r => (r.by_season[y] || {}).weeks || 0)); });
+    return table([["Manager"], ["Total",1], ...IJ.seasons.map(y => [y === IJ.current ? y + " so far" : y, 1])], part.rows.map(r => `<tr${me(r.team_id)}><td>${who(r)}</td><td class="n"><b>${r.total}</b></td>${IJ.seasons.map(y => { const c = r.by_season[y];
+      if (!c) return `<td class="n">${m("–")}</td>`;
+      return `<td class="n" title="${esc(c.players.map(tipOf).join(", "))}">${!c.weeks ? m("0") : c.weeks === most[y] ? "<b>" + c.weeks + "</b>" : c.weeks}</td>`; }).join("")}</tr>`)); };
+  const ijLong = IJ.starters.longest.map(x => `<tr${me(byTeam(x.key))}><td>${cn(name(x.key) || x.team)}</td><td>${esc(short(x.name))} ${m(x.pos)}</td><td>${x.season}</td><td class="n">${x.onset}</td><td class="n">${x.weeks}</td><td>${listed(x.listed)}${x.injury ? " " + m(esc(x.injury.toLowerCase())) : ""}</td></tr>`);
+  const got = side => side.players.map(x => `${esc(x.name.replace(/^(\S)\S*\s+/, "$1. "))}${x.weeks ? " " + m(x.weeks) : ""}`).join(", ");
+  const ijTrades = IJ.trades.filter(t => t.sides.some(x => x.weeks)).map(t => { const [a, b] = t.sides;
+    return `<tr><td>${t.season} ${m("wk " + t.week)}</td><td>${cn(name(a.key) || a.team)}</td><td>${got(a)}</td><td class="n">${a.weeks || m("0")}</td><td>${cn(name(b.key) || b.team)}</td><td>${got(b)}</td><td class="n">${b.weeks || m("0")}</td></tr>`; });
+  $("injuries").innerHTML =
+    `<h2>Starters lost to injury</h2><p class="note">Weeks missed through injury by players who had already started for a manager that season, charged to whoever had the player when he got hurt, ordered by total. Finished seasons run to week 17; ${IJ.current} runs to week ${IJ.through_week}. The most in each season is in bold. Hover a cell for the players.</p>` +
+    how(` A week counts when the NFL's injury report listed the player Out or Doubtful, or he was on injured reserve, the PUP list or the non-football injury list, in a week his team played. Bye weeks and suspensions don't count. An injury runs from the first week he is listed until he is available again. It is charged to the manager who had him the week before he was first listed, if he had been in that manager's starting lineup earlier in the season. A week-1 injury is charged to the manager who drafted him, if he went in rounds 1–${IJ.rounds}. Every week of the injury counts for that manager, even after a trade or drop. Statuses come from the league's weekly injury reports and rosters, as published by nflverse.`) +
+    ijTable(IJ.starters, x => `${x.name} (from wk ${x.onset}) ${x.weeks}`) +
+    `<h2>Early picks lost to injury</h2><p class="note">Weeks missed through injury by players drafted in rounds 1–${IJ.rounds}, charged to the manager who drafted them wherever the player was by then. Hover a cell for the players.</p>` +
+    ijTable(IJ.draft, x => `${x.name} (R${x.round}) ${x.weeks}`) +
+    `<h2>Longest absences</h2><p class="note">The single injuries that cost a manager's starters the most weeks.</p>` +
+    table([["Manager"],["Player"],["Season"],["From wk",1],["Weeks",1],["Listed as"]], ijLong) +
+    `<h2>Trades and injuries</h2><p class="note">Trades where a player went on to miss weeks through an injury that began on his new roster, with the weeks each side lost. Grey numbers are each player's weeks.</p>` +
+    how(` Trades are read from the weekly rosters: players changing teams between two weeks, in both directions at once. The week is the first week on the new team. An injury that began after a player was traded on again counts for the team that had him then, not here.`) +
+    table([["Season"],["Team"],["Got"],["Weeks",1],["Team"],["Got"],["Weeks",1]], ijTrades);
+}
+
+let wasNarrow = narrow();
+addEventListener("resize", () => { if (D && narrow() !== wasNarrow) { wasNarrow = narrow(); render(); } });
+function rGlossary() {
+  const rp = D.draft.replacement, R = D.draft;
+  const repl = Object.entries(rp).map(([k, v]) => `${k}${v.rank}`).join(", ");
+  const groups = [
+    ["Standings", [
+      ["All-play", "A team's record if it had played every other team every week. Each week a team gets a win for every team it outscored and a loss for every team that outscored it."],
+      ["Expected wins", "All-play win rate multiplied by the number of games played. A team that would have beaten 60% of the league each week over nine weeks has 5.4 expected wins."],
+      ["Luck", "Actual wins minus expected wins. Positive means the schedule has been kind; negative means the team has scored well and lost anyway."],
+      ["PF and PA", "Points for and points against, for the season so far. They can include the week in progress."],
+      ["Draft value", "Total points over replacement from the players a team drafted. See the Draft entries below."],
+      ["Hurt", "Weeks this season that a team's starters missed through injury, counted the same way as Starters lost to injury on the Injuries tab."],
+      ["Lineup efficiency", "Points a team's starters actually scored, divided by the points its best possible lineup would have scored, across all completed weeks."]]],
+    ["Lineups", [
+      ["Best lineup", "The highest-scoring legal lineup a team could have set that week from its starters and bench: 1 QB, 2 RB, 2 WR, 1 TE, 1 FLEX, 1 D/ST and 1 K. Players on IR are not counted."],
+      ["Points left", "Best lineup points minus the points the lineup actually set scored. Shown per week and added up for the season."],
+      ["Winnable losses", "Games a team lost that its best lineup would have won against the opponent's real lineup."],
+      ["Lost on one call", "Losses that a single swap would have flipped: one bench player in for the weakest starter he could legally replace."],
+      ["If perfect", "A team's record if it had set its best lineup every week, with opponents' lineups left as they were."],
+      ["Both perfect", "A team's record if every team had set its best lineup every week."],
+      ["Swing", "For one sit/start decision, the bench player's points minus the points of the weakest starter he could have replaced."]]],
+    ["Draft", [
+      ["Replacement level", `The last starter in a league this size at each position: ${repl}. It stands for the player anyone could pick up for free. Kickers and defenses are left out of draft grading.`],
+      ["Over replacement", "A player's season points minus the replacement-level player's points at his position. Below zero counts as zero, because a manager would simply start someone else."],
+      ["Draft value", "The sum of points over replacement for every player a team drafted. It grades the players as drafted, so later trades, drops and injuries are not adjusted for."],
+      ["Slot", "What a pick in that part of the draft usually returns: the average points over replacement for picks within six spots of it, across every draft on record, scaled to the weeks played."],
+      ["Vs. slot", "A pick's points over replacement minus its slot. Positive means the pick returned more than picks there usually do."],
+      ["Steal and bust", `A pick at least ${Math.round(R.label_threshold)} points above its slot is a steal; at least ${Math.round(R.label_threshold)} below is a bust. The threshold is four points per week played.`],
+      ["Passed over", "The most valuable player at any position who was drafted after a pick and before that team's next pick. For back-to-back picks the window starts after the pair."],
+      ["Gap", "The passed-over player's points over replacement minus the pick's. It is what was given up by making the pick."],
+      ["Could have waited for", "The best player at the same position who was still on the board at the team's next pick, whether he was drafted later or not at all."],
+      ["Edge", "A pick's points over replacement minus those of the player it could have waited for. Near zero means the same value was available later; negative means a better player at the position was."],
+      ["Redraft", "Every player ordered by points over replacement, as if the league drafted again today. The move shows how far a player rose or fell from his actual pick."]]],
+    ["Trades and waivers", [
+      ["Trade ledger", "Points scored since a trade by the players each side received, counted from the first week after the trade through the last completed week."],
+      ["Started points", "Points a player scored in weeks he was in that team's starting lineup."],
+      ["Roster points", "Points a player scored in weeks he was on that team's roster, started or not."],
+      ["Waiver wire", "For every player a manager added during the season, the points he scored for that manager from the week he was added."],
+      ["Drop regret", "For a player a manager cut, the weeks he then started for another team."],
+      ["Pts since", "The dropped player's points in those weeks."],
+      ["Replacement starter", "In the same weeks, the points of the weakest starter on the dropping team that the dropped player could have replaced."],
+      ["Net", "Pts since minus replacement starter. Positive means the drop cost points; negative means the manager's own starters did better."]]],
+    ["Schedule swap", [
+      ["Schedule swap", "The wins a team would have if it had played another team's opponents, week by week, using everyone's real scores. In the week that schedule has the team facing itself, it plays the schedule's owner. Two equal scores count as half a win each. All seasons adds up each season's figure."],
+      ["Title chance", "How often a manager wins the title across 5,000 random schedules: the real schedule with the teams dealt into its slots at random, the regular season and bracket replayed with every team's real weekly scores, seeds by wins and then points scored."],
+      ["Expected titles", "Title chances added up across finished seasons. A manager with more titles than expected has been lucky with schedules; fewer, unlucky."],
+      ["Title with the schedule of", "Managers whose schedule, traded straight for that season, would have won this manager the title, with the rest of the league's schedule unchanged."]]],
+    ["History", [
+      ["Record and win %", "Regular-season wins and losses across finished seasons. Win % counts a tie as half a win."],
+      ["Pts / game", "Regular-season points for divided by regular-season games."],
+      ["Titles and playoffs", "Seasons finished first, and seasons seeded into the playoff bracket."],
+      ["Head to head", "One manager's record against another across regular-season and playoff-bracket games, including the current season."],
+      ["Drafting, season by season", "Draft value worked out separately for each season, with that season's own replacement levels, and the team's rank among the league that year."],
+      ["Draft habits", "Positions taken in the first three rounds across every draft, and the average round of a manager's first quarterback and first tight end."],
+      ["Favourite players", "Players the same manager has drafted in more than one season."]]],
+    ["Injuries", [
+      ["Starters lost to injury", "Weeks a player was officially out (Out or Doubtful on the NFL injury report, or on injured reserve, the PUP list or the non-football injury list) in weeks his team played, counted for the manager who had him the week before he was first listed out, if he had started for that manager earlier in the season. A week-1 injury counts for the manager who drafted him in rounds 1–7. All weeks of the injury count, even after a trade or drop. Suspensions and bye weeks are not counted. Finished seasons cover weeks 1 to 17."],
+      ["Early picks lost to injury", "The same weeks for players drafted in rounds 1–7, counted for the manager who drafted them wherever the player had gone."],
+      ["Trades and injuries", "For each trade, the weeks the players each side received went on to miss through injuries that began while that side had them. Trades are read from week-to-week roster changes."]]]];
+  $("glossary").innerHTML = `<h2>Glossary</h2><p class="note">What each number on this site means and how it is worked out.</p>` +
+    groups.map(([title, items]) => `<h2>${title}</h2><dl class="gl">${items.map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join("")}</dl>`).join("");
+}
+
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>

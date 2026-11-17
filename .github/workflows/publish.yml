@@ -1,0 +1,51 @@
+name: Publish dashboard
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    # Times are UTC. Every 10 minutes during NFL game windows, otherwise every 6 hours.
+    - cron: "*/10 17-23 * * 0"      # Sunday afternoon and evening (US)
+    - cron: "*/10 0-5 * * 1,2,5"    # Sunday, Monday and Thursday night games
+    - cron: "23 */6 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Completed weeks and past seasons never change, so keep the JSON cache between runs.
+      - uses: actions/cache@v4
+        with:
+          path: cache
+          key: espn-cache-${{ github.run_id }}
+          restore-keys: espn-cache-
+      - name: Build
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          LEAGUE_ID: ${{ vars.LEAGUE_ID }}
+          SEASON: ${{ vars.SEASON }}
+          MY_TEAM_ID: ${{ vars.MY_TEAM_ID }}
+        run: python build_static.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
