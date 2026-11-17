@@ -40,8 +40,8 @@ jobs:
         env:
           ESPN_S2: ${{ secrets.ESPN_S2 }}
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
-          LEAGUE_ID: ${{ vars.LEAGUE_ID }}
-          SEASON: ${{ vars.SEASON }}
+          LEAGUE_ID: ${{ vars.LEAGUE_ID || '271655249' }}
+          SEASON: ${{ vars.SEASON || '2026' }}
           MY_TEAM_ID: ${{ vars.MY_TEAM_ID }}
         run: python build_static.py
       - uses: actions/upload-pages-artifact@v3
