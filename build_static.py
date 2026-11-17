@@ -54,7 +54,20 @@ def _diagnose() -> None:
                 print("diagnose: season %s %s -> %s" % (season, label, e))
 
 
+def _cookie_shape() -> None:
+    """Print the cookies' shape (never their values) to help spot paste mistakes."""
+    import os
+    s2, swid = os.environ.get("ESPN_S2", ""), os.environ.get("ESPN_SWID", "")
+    if s2 or swid:
+        print("cookies: ESPN_S2 %d chars (spaces/newlines: %s, starts with 'espn_s2': %s); "
+              "ESPN_SWID %d chars (braces: %s, spaces/newlines: %s, dashes: %d)" % (
+                  len(s2), any(c.isspace() for c in s2), s2.lower().startswith("espn_s2"),
+                  len(swid), swid.strip().startswith("{") and swid.strip().endswith("}"),
+                  any(c.isspace() for c in swid), swid.count("-")))
+
+
 def main() -> int:
+    _cookie_shape()
     try:
         client = EspnClient.from_env()
         marker = client.cache_dir / "players_weekly.json"
